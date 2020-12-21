@@ -74,8 +74,7 @@ services:
     volumes:
       - filer-vol:/data
     deploy:
-      mode: replicated
-      replicas: ${FILER_REPLICAS:-1}
+      mode: global
       restart_policy:
         delay: ${FILER_RESTART_DELAY:-5s}
       update_config:
