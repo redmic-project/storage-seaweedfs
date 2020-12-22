@@ -80,11 +80,34 @@ services:
         delay: ${FILER_UPDATE_DELAY:-1m}
       resources:
         limits:
-          cpus: '${FILER_RESOURCES_LIMITS_CPUS:-1}'
+          cpus: '${FILER_RESOURCES_LIMITS_CPUS:-0.1}'
           memory: ${FILER_RESOURCES_LIMITS_MEMORY:-32M}
         reservations:
           cpus: '${FILER_RESOURCES_RESERVATIONS_CPUS:-0.001}'
           memory: ${FILER_RESOURCES_RESERVATIONS_MEMORY:-16M}
+
+  etcd:
+    image: ${ETCD_IMAGE_NAME:-appcelerator/etcd}:${ETCD_IMAGE_TAG:-latest}
+    volumes:
+      - etcd:/data
+    networks:
+      seaweedfs-net:
+    environment:
+      SERVICE_NAME: etcd
+      MIN_SEEDS_COUNT: 1
+    deploy:
+      mode: global
+      restart_policy:
+        delay: ${ETCD_RESTART_DELAY:-1s}
+      update_config:
+        delay: ${ETCD_UPDATE_DELAY:-10s}
+      resources:
+        limits:
+          cpus: '${ETCD_RESOURCES_LIMITS_CPUS:-0.1}'
+          memory: ${ETCD_RESOURCES_LIMITS_MEMORY:-16M}
+        reservations:
+          cpus: '${ETCD_RESOURCES_RESERVATIONS_CPUS:-0.001}'
+          memory: ${ETCD_RESOURCES_RESERVATIONS_MEMORY:-8M}
 
   docker-volume-plugin-setup:
     image: alpine:latest
@@ -100,13 +123,13 @@ services:
     image: ${PLUGIN_IMAGE_NAME:-svendowideit/seaweedfs-volume-plugin-rootfs}:${PLUGIN_IMAGE_TAG:-develop}
     environment:
       DEBUG: 'true'
+    networks:
+      seaweedfs-net:
     volumes:
       - ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/rootfs/tmp:/tmp
       - ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/rootfs/mnt:/mnt
       #- ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/propagated-mount:/propagated-mount
       - /run:/run
-    networks:
-      seaweedfs-net:
     deploy:
       mode: global
       restart_policy:
