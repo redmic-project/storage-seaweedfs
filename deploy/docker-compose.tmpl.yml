@@ -41,7 +41,7 @@ services:
 
   swfs-volume:
     image: ${IMAGE_NAME}:${IMAGE_TAG}
-    command: volume -port=${VOLUME_PORT:-8080} -max={$VOLUME_MAX:-6} -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
+    command: volume -port=${VOLUME_PORT:-8080} -max=${VOLUME_MAX:-6} -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     networks:
       seaweedfs-net:
     volumes:
