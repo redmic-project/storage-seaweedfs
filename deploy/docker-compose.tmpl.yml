@@ -72,6 +72,10 @@ services:
       seaweedfs-net:
     volumes:
       - filer-vol:/data
+    configs:
+      - source: filer-conf
+        target: /etc/seaweedfs/filer.toml
+        mode: 0755
     deploy:
       mode: global
       restart_policy:
@@ -168,3 +172,8 @@ volumes:
 
   etcd-vol:
     name: ${ETCD_VOL_NAME:-seaweedfs-etcd}
+
+configs:
+  filer-conf:
+    name: ${FILER_CONF_NAME:-seaweedfs-filer-toml}
+    file: ./config/filer.toml
