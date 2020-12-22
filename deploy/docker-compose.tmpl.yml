@@ -86,6 +86,41 @@ services:
           cpus: '${FILER_RESOURCES_RESERVATIONS_CPUS:-0.001}'
           memory: ${FILER_RESOURCES_RESERVATIONS_MEMORY:-16M}
 
+  docker-volume-plugin-setup:
+    image: alpine:latest
+    volumes:
+      - ${DOCKER_PLUGINS_PATH}:${DOCKER_PLUGINS_PATH}
+    command: mkdir -p ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/rootfs/tmp ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/rootfs/mnt
+    deploy:
+      mode: global
+      restart_policy:
+        condition: none
+
+  docker-volume-plugin:
+    image: ${PLUGIN_IMAGE_NAME:-svendowideit/seaweedfs-volume-plugin-rootfs}:${PLUGIN_IMAGE_TAG:-develop}
+    environment:
+      DEBUG: 'true'
+    volumes:
+      - ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/rootfs/tmp:/tmp
+      - ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/rootfs/mnt:/mnt
+      #- ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/propagated-mount:/propagated-mount
+      - /run:/run
+    networks:
+      - internal
+    deploy:
+      mode: global
+      restart_policy:
+        delay: ${PLUGIN_RESTART_DELAY:-1s}
+      update_config:
+        delay: ${PLUGIN_UPDATE_DELAY:-10s}
+      resources:
+        limits:
+          cpus: '${PLUGIN_RESOURCES_LIMITS_CPUS:-0.1}'
+          memory: ${PLUGIN_RESOURCES_LIMITS_MEMORY:-16M}
+        reservations:
+          cpus: '${PLUGIN_RESOURCES_RESERVATIONS_CPUS:-0.001}'
+          memory: ${PLUGIN_RESOURCES_RESERVATIONS_MEMORY:-8M}
+
 networks:
   seaweedfs-net:
     name: ${SEAWEEDFS_NET_NAME:-seaweedfs-net}
