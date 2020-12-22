@@ -89,7 +89,7 @@ services:
   etcd:
     image: ${ETCD_IMAGE_NAME:-appcelerator/etcd}:${ETCD_IMAGE_TAG:-latest}
     volumes:
-      - etcd:/data
+      - etcd-vol:/data
     networks:
       seaweedfs-net:
     environment:
@@ -165,3 +165,6 @@ volumes:
 
   filer-vol:
     name: ${FILER_VOL_NAME:-seaweedfs-filer}
+
+  etcd-vol:
+    name: ${ETCD_VOL_NAME:-seaweedfs-etcd}
