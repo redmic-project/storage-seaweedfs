@@ -106,7 +106,7 @@ services:
       #- ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/propagated-mount:/propagated-mount
       - /run:/run
     networks:
-      - internal
+      seaweedfs-net:
     deploy:
       mode: global
       restart_policy:
