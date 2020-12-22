@@ -3,7 +3,6 @@ version: '3.8'
 x-swfs-master:
   &swfs-master-common
   image: ${IMAGE_NAME}:${IMAGE_TAG}
-  command: master -ip=0.0.0.0 -port=${MASTER_PORT} -defaultReplication=${DEFAULT_REPLICATION:-002} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
   networks:
     seaweedfs-net:
   deploy:
@@ -24,16 +23,19 @@ x-swfs-master:
 services:
   swfs-master-1:
     << : *swfs-master-common
+    command: master -ip=${MASTER_HOST}-1 -port=${MASTER_PORT} -defaultReplication=${DEFAULT_REPLICATION} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     volumes:
       - master-1-vol:/data
 
   swfs-master-2:
     << : *swfs-master-common
+    command: master -ip=${MASTER_HOST}-2 -port=${MASTER_PORT} -defaultReplication=${DEFAULT_REPLICATION} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     volumes:
       - master-2-vol:/data
 
   swfs-master-3:
     << : *swfs-master-common
+    command: master -ip=${MASTER_HOST}-3 -port=${MASTER_PORT} -defaultReplication=${DEFAULT_REPLICATION} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     volumes:
       - master-3-vol:/data
 
