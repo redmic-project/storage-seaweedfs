@@ -69,6 +69,7 @@ services:
     ports:
       - ${PUBLISHED_FILER_PORT:-8888}:${FILER_PORT}
     networks:
+      internal-net:
       seaweedfs-net:
     volumes:
       - filer-vol:/data
@@ -95,6 +96,7 @@ services:
     volumes:
       - etcd-vol:/data
     networks:
+      internal-net:
       seaweedfs-net:
     environment:
       SERVICE_NAME: etcd
@@ -128,6 +130,7 @@ services:
     environment:
       DEBUG: 'true'
     networks:
+      internal-net:
       seaweedfs-net:
     volumes:
       - ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/rootfs/tmp:/tmp
@@ -153,6 +156,11 @@ networks:
     name: ${SEAWEEDFS_NET_NAME:-seaweedfs-net}
     driver: ${SEAWEEDFS_NET_DRIVER:-overlay}
     attachable: ${SEAWEEDFS_NET_ATTACHABLE:-true}
+
+  internal-net:
+    name: ${INTERNAL_NET_NAME:-seaweedfs_internal}
+    driver: ${INTERNAL_NET_DRIVER:-overlay}
+    attachable: ${INTERNAL_NET_ATTACHABLE:-true}
 
 volumes:
   master-1-vol:
