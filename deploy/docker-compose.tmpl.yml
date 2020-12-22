@@ -3,6 +3,7 @@ version: '3.8'
 x-swfs-master:
   &swfs-master-common
   image: ${IMAGE_NAME}:${IMAGE_TAG}
+  command: master -ip=0.0.0.0 -port=${MASTER_PORT} -defaultReplication=${DEFAULT_REPLICATION:-002} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
   networks:
     seaweedfs-net:
   deploy:
@@ -11,7 +12,7 @@ x-swfs-master:
     restart_policy:
       delay: ${MASTER_RESTART_DELAY:-1s}
     update_config:
-      delay: ${MASTER_UPDATE_DELAY:-5m}
+      delay: ${MASTER_UPDATE_DELAY:-1m}
     resources:
       limits:
         cpus: '${MASTER_RESOURCES_LIMITS_CPUS:-0.1}'
@@ -23,37 +24,33 @@ x-swfs-master:
 services:
   swfs-master-1:
     << : *swfs-master-common
-    command: master -ip=${MASTER_HOST}-1 -port=${MASTER_PORT} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     volumes:
       - master-1-vol:/data
 
   swfs-master-2:
     << : *swfs-master-common
-    command: master -ip=${MASTER_HOST}-2 -port=${MASTER_PORT} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     volumes:
       - master-2-vol:/data
 
   swfs-master-3:
     << : *swfs-master-common
-    command: master -ip=${MASTER_HOST}-3 -port=${MASTER_PORT} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     volumes:
       - master-3-vol:/data
 
   swfs-volume:
     image: ${IMAGE_NAME}:${IMAGE_TAG}
-    command: volume -port=${VOLUME_PORT:-8080} -dir=/obj -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
+    command: volume -port=${VOLUME_PORT:-8080} -max={$VOLUME_MAX:-6} -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     networks:
       seaweedfs-net:
     volumes:
-      - volume-data-vol:/data
-      - volume-object-vol:/obj
+      - volume-vol:/data
     deploy:
       mode: replicated
       replicas: ${VOLUME_REPLICAS:-3}
       restart_policy:
         delay: ${VOLUME_RESTART_DELAY:-5s}
       update_config:
-        delay: ${VOLUME_UPDATE_DELAY:-1m}
+        delay: ${VOLUME_UPDATE_DELAY:-5m}
       placement:
         max_replicas_per_node: 1
       resources:
@@ -103,11 +100,8 @@ volumes:
   master-3-vol:
     name: ${MASTER_3_VOL_NAME:-seaweedfs-master-3}
 
-  volume-data-vol:
-    name: ${VOLUME_DATA_VOL_NAME:-seaweedfs-volume-data}
-
-  volume-object-vol:
-    name: ${VOLUME_OBJECT_VOL_NAME:-seaweedfs-volume-object}
+  volume-vol:
+    name: ${VOLUME_VOL_NAME:-seaweedfs-volume}
 
   filer-vol:
     name: ${FILER_VOL_NAME:-seaweedfs-filer}
