@@ -4,6 +4,9 @@ x-swfs-master:
   &swfs-master-common
   image: ${IMAGE_NAME}:${IMAGE_TAG}
   networks:
+    internal-net:
+      aliases:
+        - master
     seaweedfs-net:
   deploy:
     mode: replicated
@@ -43,6 +46,9 @@ services:
     image: ${IMAGE_NAME}:${IMAGE_TAG}
     command: volume -port=${VOLUME_PORT:-8080} -max=${VOLUME_MAX:-6} -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     networks:
+      internal-net:
+        aliases:
+          - volume
       seaweedfs-net:
     volumes:
       - volume-vol:/data
@@ -70,6 +76,8 @@ services:
       - ${PUBLISHED_FILER_PORT:-8888}:${FILER_PORT}
     networks:
       internal-net:
+        aliases:
+          - filer
       seaweedfs-net:
     volumes:
       - filer-vol:/data
