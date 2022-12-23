@@ -5,6 +5,7 @@ x-swfs-master:
   image: ${IMAGE_NAME}:${IMAGE_TAG}
   networks:
     seaweedfs-net:
+    traefik-net:
   deploy:
     mode: replicated
     replicas: 1
@@ -24,6 +25,7 @@ x-swfs-master:
       traefik.http.routers.swfs-master.entrypoints: ${TRAEFIK_ENTRYPOINT}
       traefik.http.routers.swfs-master.rule: Host(`${MASTER_TRAEFIK_SUBDOMAIN:-swfs-master}.${PUBLIC_HOSTNAME}`)
       traefik.http.services.swfs-master.loadbalancer.server.port: 1${MASTER_PORT}
+      traefik.http.services.swfs-master.loadbalancer.sticky.cookie: 'true'
 
 services:
   swfs-master-1:
@@ -49,6 +51,7 @@ services:
     command: volume -ip.bind=0.0.0.0 -max=${VOLUME_MAX:-6} -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     networks:
       seaweedfs-net:
+      traefik-net:
     volumes:
       - volume-vol:/data
     deploy:
@@ -72,12 +75,14 @@ services:
         traefik.http.routers.swfs-volume.entrypoints: ${TRAEFIK_ENTRYPOINT}
         traefik.http.routers.swfs-volume.rule: Host(`${VOLUME_TRAEFIK_SUBDOMAIN:-swfs-volume}.${PUBLIC_HOSTNAME}`)
         traefik.http.services.swfs-volume.loadbalancer.server.port: 1${VOLUME_PORT}
+        traefik.http.services.swfs-volume.loadbalancer.sticky.cookie: 'true'
 
   swfs-filer:
     image: ${IMAGE_NAME}:${IMAGE_TAG}
     command: filer -ip.bind=0.0.0.0 -master=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     networks:
       seaweedfs-net:
+      traefik-net:
     volumes:
       - filer-vol:/data
     deploy:
@@ -98,12 +103,18 @@ services:
         traefik.http.routers.swfs-filer.entrypoints: ${TRAEFIK_ENTRYPOINT}
         traefik.http.routers.swfs-filer.rule: Host(`${FILER_TRAEFIK_SUBDOMAIN:-swfs-filer}.${PUBLIC_HOSTNAME}`)
         traefik.http.services.swfs-filer.loadbalancer.server.port: 1${FILER_PORT}
+        traefik.http.services.swfs-filer.loadbalancer.sticky.cookie: 'true'
 
 networks:
   seaweedfs-net:
     name: ${SEAWEEDFS_NET_NAME:-seaweedfs-net}
     driver: ${SEAWEEDFS_NET_DRIVER:-overlay}
     attachable: ${SEAWEEDFS_NET_ATTACHABLE:-true}
+
+  traefik-net:
+    name: ${TRAEFIK_NET_NAME:-traefik-net}
+    driver: ${TRAEFIK_NET_DRIVER:-overlay}
+    external: true
 
 volumes:
   master-1-vol:
