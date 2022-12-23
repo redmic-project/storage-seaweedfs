@@ -1,12 +1,9 @@
-version: '3.8'
+version: '3.9'
 
 x-swfs-master:
   &swfs-master-common
   image: ${IMAGE_NAME}:${IMAGE_TAG}
   networks:
-    internal-net:
-      aliases:
-        - master
     seaweedfs-net:
   deploy:
     mode: replicated
@@ -22,33 +19,35 @@ x-swfs-master:
       reservations:
         cpus: '${MASTER_RESOURCES_RESERVATIONS_CPUS:-0.001}'
         memory: ${MASTER_RESOURCES_RESERVATIONS_MEMORY:-16M}
+    labels:
+      traefik.enable: 'true'
+      traefik.http.routers.swfs-master.entrypoints: ${TRAEFIK_ENTRYPOINT}
+      traefik.http.routers.swfs-master.rule: Host(`${MASTER_TRAEFIK_SUBDOMAIN:-swfs-master}.${PUBLIC_HOSTNAME}`)
+      traefik.http.services.swfs-master.loadbalancer.server.port: 1${MASTER_PORT}
 
 services:
   swfs-master-1:
     << : *swfs-master-common
-    command: master -ip=${MASTER_HOST}-1 -port=${MASTER_PORT} -defaultReplication=${DEFAULT_REPLICATION} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
+    command: master -ip=${MASTER_HOST}-1 -ip.bind=0.0.0.0 -defaultReplication=${DEFAULT_REPLICATION} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     volumes:
       - master-1-vol:/data
 
   swfs-master-2:
     << : *swfs-master-common
-    command: master -ip=${MASTER_HOST}-2 -port=${MASTER_PORT} -defaultReplication=${DEFAULT_REPLICATION} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
+    command: master -ip=${MASTER_HOST}-2 -ip.bind=0.0.0.0 -defaultReplication=${DEFAULT_REPLICATION} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     volumes:
       - master-2-vol:/data
 
   swfs-master-3:
     << : *swfs-master-common
-    command: master -ip=${MASTER_HOST}-3 -port=${MASTER_PORT} -defaultReplication=${DEFAULT_REPLICATION} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
+    command: master -ip=${MASTER_HOST}-3 -ip.bind=0.0.0.0 -defaultReplication=${DEFAULT_REPLICATION} -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     volumes:
       - master-3-vol:/data
 
   swfs-volume:
     image: ${IMAGE_NAME}:${IMAGE_TAG}
-    command: volume -port=${VOLUME_PORT:-8080} -max=${VOLUME_MAX:-6} -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
+    command: volume -ip.bind=0.0.0.0 -max=${VOLUME_MAX:-6} -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     networks:
-      internal-net:
-        aliases:
-          - volume
       seaweedfs-net:
     volumes:
       - volume-vol:/data
@@ -68,23 +67,19 @@ services:
         reservations:
           cpus: '${VOLUME_RESOURCES_RESERVATIONS_CPUS:-0.001}'
           memory: ${VOLUME_RESOURCES_RESERVATIONS_MEMORY:-16M}
+      labels:
+        traefik.enable: 'true'
+        traefik.http.routers.swfs-volume.entrypoints: ${TRAEFIK_ENTRYPOINT}
+        traefik.http.routers.swfs-volume.rule: Host(`${VOLUME_TRAEFIK_SUBDOMAIN:-swfs-volume}.${PUBLIC_HOSTNAME}`)
+        traefik.http.services.swfs-volume.loadbalancer.server.port: 1${VOLUME_PORT}
 
   swfs-filer:
     image: ${IMAGE_NAME}:${IMAGE_TAG}
-    command: filer -port=${FILER_PORT} -master=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
-    ports:
-      - ${PUBLISHED_FILER_PORT:-8888}:${FILER_PORT}
+    command: filer -ip.bind=0.0.0.0 -master=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     networks:
-      internal-net:
-        aliases:
-          - filer
       seaweedfs-net:
     volumes:
       - filer-vol:/data
-    configs:
-      - source: filer-conf
-        target: /etc/seaweedfs/filer.toml
-        mode: 0755
     deploy:
       mode: global
       restart_policy:
@@ -98,77 +93,17 @@ services:
         reservations:
           cpus: '${FILER_RESOURCES_RESERVATIONS_CPUS:-0.001}'
           memory: ${FILER_RESOURCES_RESERVATIONS_MEMORY:-16M}
-
-  etcd:
-    image: ${ETCD_IMAGE_NAME:-appcelerator/etcd}:${ETCD_IMAGE_TAG:-latest}
-    volumes:
-      - etcd-vol:/data
-    networks:
-      internal-net:
-      seaweedfs-net:
-    environment:
-      SERVICE_NAME: etcd
-      MIN_SEEDS_COUNT: 1
-    deploy:
-      mode: global
-      restart_policy:
-        delay: ${ETCD_RESTART_DELAY:-1s}
-      update_config:
-        delay: ${ETCD_UPDATE_DELAY:-10s}
-      resources:
-        limits:
-          cpus: '${ETCD_RESOURCES_LIMITS_CPUS:-0.1}'
-          memory: ${ETCD_RESOURCES_LIMITS_MEMORY:-16M}
-        reservations:
-          cpus: '${ETCD_RESOURCES_RESERVATIONS_CPUS:-0.001}'
-          memory: ${ETCD_RESOURCES_RESERVATIONS_MEMORY:-8M}
-
-  docker-volume-plugin-setup:
-    image: alpine:latest
-    volumes:
-      - ${DOCKER_PLUGINS_PATH}:${DOCKER_PLUGINS_PATH}
-    command: mkdir -p ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/rootfs/tmp ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/rootfs/mnt
-    deploy:
-      mode: global
-      restart_policy:
-        condition: none
-
-  docker-volume-plugin:
-    image: ${PLUGIN_IMAGE_NAME:-svendowideit/seaweedfs-volume-plugin-rootfs}:${PLUGIN_IMAGE_TAG:-develop}
-    environment:
-      DEBUG: 'true'
-    networks:
-      internal-net:
-      seaweedfs-net:
-    volumes:
-      - ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/rootfs/tmp:/tmp
-      - ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/rootfs/mnt:/mnt
-      #- ${DOCKER_PLUGINS_PATH}/${DOCKER_PLUGIN_NAME}/propagated-mount:/propagated-mount
-      - /run:/run
-    deploy:
-      mode: global
-      restart_policy:
-        delay: ${PLUGIN_RESTART_DELAY:-1s}
-      update_config:
-        delay: ${PLUGIN_UPDATE_DELAY:-10s}
-      resources:
-        limits:
-          cpus: '${PLUGIN_RESOURCES_LIMITS_CPUS:-0.1}'
-          memory: ${PLUGIN_RESOURCES_LIMITS_MEMORY:-16M}
-        reservations:
-          cpus: '${PLUGIN_RESOURCES_RESERVATIONS_CPUS:-0.001}'
-          memory: ${PLUGIN_RESOURCES_RESERVATIONS_MEMORY:-8M}
+      labels:
+        traefik.enable: 'true'
+        traefik.http.routers.swfs-filer.entrypoints: ${TRAEFIK_ENTRYPOINT}
+        traefik.http.routers.swfs-filer.rule: Host(`${FILER_TRAEFIK_SUBDOMAIN:-swfs-filer}.${PUBLIC_HOSTNAME}`)
+        traefik.http.services.swfs-filer.loadbalancer.server.port: 1${FILER_PORT}
 
 networks:
   seaweedfs-net:
     name: ${SEAWEEDFS_NET_NAME:-seaweedfs-net}
     driver: ${SEAWEEDFS_NET_DRIVER:-overlay}
     attachable: ${SEAWEEDFS_NET_ATTACHABLE:-true}
-
-  internal-net:
-    name: ${INTERNAL_NET_NAME:-seaweedfs_internal}
-    driver: ${INTERNAL_NET_DRIVER:-overlay}
-    attachable: ${INTERNAL_NET_ATTACHABLE:-true}
 
 volumes:
   master-1-vol:
@@ -185,11 +120,3 @@ volumes:
 
   filer-vol:
     name: ${FILER_VOL_NAME:-seaweedfs-filer}
-
-  etcd-vol:
-    name: ${ETCD_VOL_NAME:-seaweedfs-etcd}
-
-configs:
-  filer-conf:
-    name: ${FILER_CONF_NAME:-seaweedfs-filer-toml}
-    file: ./config/filer.toml
