@@ -17,6 +17,7 @@ services:
             -ip.bind=0.0.0.0
             -port=${MASTER_PORT}
             -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
+            -metricsPort=${METRICS_PORT}
         ")
     hostname: ${MASTER_IP}
     environment:
@@ -76,6 +77,7 @@ services:
             -port=${VOLUME_PORT}
             -publicUrl=${VOLUME_TRAEFIK_SUBDOMAIN}.${PUBLIC_HOSTNAME}
             -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
+            -metricsPort=${METRICS_PORT}
         ")
     hostname: ${VOLUME_IP}
     environment:
@@ -135,6 +137,7 @@ services:
             -ip.bind=0.0.0.0
             -port=${FILER_PORT}
             -master=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
+            -metricsPort=${METRICS_PORT}
         ")
     hostname: ${FILER_IP}
     environment:
