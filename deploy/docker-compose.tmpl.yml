@@ -3,9 +3,8 @@ version: '3.9'
 x-swfs-master:
   &swfs-master-common
   image: ${IMAGE_NAME}:${IMAGE_TAG}
-  entrypoint: /bin/sh
-  command: >
-    -c "weed -logtostderr=true master \"
+  entrypoint: /bin/sh -c
+  command: weed -logtostderr=true master
       -mdir=${DATA_PATH}
       -volumePreallocate
       -volumeSizeLimitMB=1024
@@ -13,7 +12,7 @@ x-swfs-master:
       -ip=$${MASTER_IP}
       -ip.bind=0.0.0.0
       -port=${MASTER_PORT}
-      -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}\""
+      -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
   networks:
     seaweedfs-net:
     traefik-net:
@@ -67,18 +66,17 @@ services:
 
   swfs-volume:
     image: ${IMAGE_NAME}:${IMAGE_TAG}
-    entrypoint: /bin/sh
-    command: >
-      -c "weed -logtostderr=true volume \"
-        -dir=${DATA_PATH}
-        -max=0
-        -dataCenter=$${VOLUME_DATACENTER}
-        -rack=$${VOLUME_RACK}
-        -ip=$${VOLUME_IP}
-        -ip.bind=0.0.0.0
-        -port=${VOLUME_PORT}
-        -publicUrl=${VOLUME_TRAEFIK_SUBDOMAIN}.${PUBLIC_HOSTNAME}
-        -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}\""
+    entrypoint: /bin/sh -c
+    command: weed -logtostderr=true volume
+      -dir=${DATA_PATH}
+      -max=0
+      -dataCenter=$${VOLUME_DATACENTER}
+      -rack=$${VOLUME_RACK}
+      -ip=$${VOLUME_IP}
+      -ip.bind=0.0.0.0
+      -port=${VOLUME_PORT}
+      -publicUrl=${VOLUME_TRAEFIK_SUBDOMAIN}.${PUBLIC_HOSTNAME}
+      -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     hostname: ${VOLUME_IP}
     environment:
       VOLUME_IP:
@@ -117,16 +115,15 @@ services:
 
   swfs-filer:
     image: ${IMAGE_NAME}:${IMAGE_TAG}
-    entrypoint: /bin/sh
-    command: >
-      -c "weed -logtostderr=true filer \"
-        -dataCenter=$${FILER_PREFERED_DATACENTER}
-        -rack=$${FILER_PREFERED_RACK}
-        -filerGroup ${FILER_GROUP}
-        -ip=$${FILER_IP}
-        -ip.bind=0.0.0.0
-        -port=${FILER_PORT}
-        -master=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}\""
+    entrypoint: /bin/sh -c
+    command: weed -logtostderr=true filer
+      -dataCenter=$${FILER_PREFERED_DATACENTER}
+      -rack=$${FILER_PREFERED_RACK}
+      -filerGroup ${FILER_GROUP}
+      -ip=$${FILER_IP}
+      -ip.bind=0.0.0.0
+      -port=${FILER_PORT}
+      -master=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
     hostname: ${FILER_IP}
     environment:
       FILER_IP:
