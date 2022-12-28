@@ -26,6 +26,12 @@ services:
       traefik-net:
     volumes:
       - master-vol:${DATA_PATH}
+    healthcheck:
+      test: wget --spider -q http://127.0.0.1:${MASTER_PORT}/cluster/healthz
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
     deploy:
       mode: replicated
       replicas: ${MASTER_REPLICAS:-3}
@@ -81,6 +87,12 @@ services:
       traefik-net:
     volumes:
       - volume-vol:${DATA_PATH}
+    healthcheck:
+      test: wget --spider -q http://127.0.0.1:${VOLUME_PORT}/healthz
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
     deploy:
       mode: replicated
       replicas: ${VOLUME_REPLICAS:-3}
@@ -134,6 +146,12 @@ services:
       traefik-net:
     volumes:
       - filer-vol:${DATA_PATH}
+    healthcheck:
+      test: wget --spider -q http://127.0.0.1:${FILER_PORT}/
+      interval: ${HEALTHCHECK_INTERVAL}
+      timeout: ${HEALTHCHECK_TIMEOUT}
+      retries: ${HEALTHCHECK_RETRIES}
+      start_period: ${HEALTHCHECK_START_PERIOD}
     deploy:
       mode: global
       restart_policy:
@@ -143,10 +161,10 @@ services:
       resources:
         limits:
           cpus: '${FILER_RESOURCES_LIMITS_CPUS:-1}'
-          memory: ${FILER_RESOURCES_LIMITS_MEMORY:-128M}
+          memory: ${FILER_RESOURCES_LIMITS_MEMORY:-256M}
         reservations:
           cpus: '${FILER_RESOURCES_RESERVATIONS_CPUS:-0.1}'
-          memory: ${FILER_RESOURCES_RESERVATIONS_MEMORY:-64M}
+          memory: ${FILER_RESOURCES_RESERVATIONS_MEMORY:-128M}
       labels:
         traefik.enable: 'true'
         traefik.http.routers.swfs-filer.entrypoints: ${TRAEFIK_ENTRYPOINT}
