@@ -1,73 +1,57 @@
 version: '3.9'
 
-x-swfs-master:
-  &swfs-master-common
-  image: ${IMAGE_NAME}:${IMAGE_TAG}
-  entrypoint: /bin/sh
-  command:
-    - -c
-    - |
-      $$(echo "
-        weed -logtostderr=true master
-          -mdir=${DATA_PATH}
-          -volumePreallocate
-          -volumeSizeLimitMB=1024
-          -defaultReplication=${DEFAULT_REPLICATION}
-          -ip=$${MASTER_IP}
-          -ip.bind=0.0.0.0
-          -port=${MASTER_PORT}
-          -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
-      ")
-  networks:
-    seaweedfs-net:
-    traefik-net:
-  deploy:
-    mode: replicated
-    replicas: 1
-    restart_policy:
-      delay: ${MASTER_RESTART_DELAY:-1s}
-    update_config:
-      delay: ${MASTER_UPDATE_DELAY:-1m}
-    resources:
-      limits:
-        cpus: '${MASTER_RESOURCES_LIMITS_CPUS:-0.1}'
-        memory: ${MASTER_RESOURCES_LIMITS_MEMORY:-64M}
-      reservations:
-        cpus: '${MASTER_RESOURCES_RESERVATIONS_CPUS:-0.001}'
-        memory: ${MASTER_RESOURCES_RESERVATIONS_MEMORY:-32M}
-    labels:
-      traefik.enable: 'true'
-      traefik.http.routers.swfs-master.entrypoints: ${TRAEFIK_ENTRYPOINT}
-      traefik.http.routers.swfs-master.rule: Host(`${MASTER_TRAEFIK_SUBDOMAIN}.${PUBLIC_HOSTNAME}`)
-      traefik.http.middlewares.swfs-master-auth.basicauth.users: ${MASTER_TRAEFIK_AUTH}
-      traefik.http.routers.swfs-master.middlewares: swfs-master-auth
-      traefik.http.services.swfs-master.loadbalancer.server.port: ${MASTER_PORT}
-      traefik.http.services.swfs-master.loadbalancer.sticky.cookie: 'true'
-
 services:
-  swfs-master-1:
-    << : *swfs-master-common
-    hostname: ${MASTER_HOST}-1
+  swfs-master:
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        $$(echo "
+          weed -logtostderr=true master
+            -mdir=${DATA_PATH}
+            -volumePreallocate
+            -volumeSizeLimitMB=1024
+            -defaultReplication=${DEFAULT_REPLICATION}
+            -ip=$${MASTER_IP}
+            -ip.bind=0.0.0.0
+            -port=${MASTER_PORT}
+            -peers=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
+        ")
+    hostname: ${MASTER_IP}
     environment:
-      MASTER_IP: ${MASTER_HOST}-1
+      MASTER_IP:
+    networks:
+      seaweedfs-net:
+      traefik-net:
     volumes:
-      - master-1-vol:${DATA_PATH}
-
-  swfs-master-2:
-    << : *swfs-master-common
-    hostname: ${MASTER_HOST}-2
-    environment:
-      MASTER_IP: ${MASTER_HOST}-2
-    volumes:
-      - master-2-vol:${DATA_PATH}
-
-  swfs-master-3:
-    << : *swfs-master-common
-    hostname: ${MASTER_HOST}-3
-    environment:
-      MASTER_IP: ${MASTER_HOST}-3
-    volumes:
-      - master-3-vol:${DATA_PATH}
+      - master-vol:${DATA_PATH}
+    deploy:
+      mode: replicated
+      replicas: ${MASTER_REPLICAS:-3}
+      restart_policy:
+        delay: ${MASTER_RESTART_DELAY:-1s}
+      update_config:
+        delay: ${MASTER_UPDATE_DELAY:-1m}
+      placement:
+        constraints:
+          - "node.labels.${MASTER_NODE_LABEL_NAME:-swfs-master}==${MASTER_NODE_LABEL_VALUE:-1}"
+        max_replicas_per_node: 1
+      resources:
+        limits:
+          cpus: '${MASTER_RESOURCES_LIMITS_CPUS:-0.1}'
+          memory: ${MASTER_RESOURCES_LIMITS_MEMORY:-64M}
+        reservations:
+          cpus: '${MASTER_RESOURCES_RESERVATIONS_CPUS:-0.001}'
+          memory: ${MASTER_RESOURCES_RESERVATIONS_MEMORY:-32M}
+      labels:
+        traefik.enable: 'true'
+        traefik.http.routers.swfs-master.entrypoints: ${TRAEFIK_ENTRYPOINT}
+        traefik.http.routers.swfs-master.rule: Host(`${MASTER_TRAEFIK_SUBDOMAIN}.${PUBLIC_HOSTNAME}`)
+        traefik.http.middlewares.swfs-master-auth.basicauth.users: ${MASTER_TRAEFIK_AUTH}
+        traefik.http.routers.swfs-master.middlewares: swfs-master-auth
+        traefik.http.services.swfs-master.loadbalancer.server.port: ${MASTER_PORT}
+        traefik.http.services.swfs-master.loadbalancer.sticky.cookie: 'true'
 
   swfs-volume:
     image: ${IMAGE_NAME}:${IMAGE_TAG}
@@ -105,21 +89,22 @@ services:
       update_config:
         delay: ${VOLUME_UPDATE_DELAY:-5m}
       placement:
+        constraints:
+          - "node.labels.${VOLUME_NODE_LABEL_NAME:-swfs-volume}==${VOLUME_NODE_LABEL_VALUE:-1}"
         max_replicas_per_node: 1
       resources:
         limits:
           cpus: '${VOLUME_RESOURCES_LIMITS_CPUS:-1}'
           memory: ${VOLUME_RESOURCES_LIMITS_MEMORY:-64M}
         reservations:
-          cpus: '${VOLUME_RESOURCES_RESERVATIONS_CPUS:-0.001}'
+          cpus: '${VOLUME_RESOURCES_RESERVATIONS_CPUS:-0.1}'
           memory: ${VOLUME_RESOURCES_RESERVATIONS_MEMORY:-32M}
       labels:
         traefik.enable: 'true'
         traefik.http.routers.swfs-volume.entrypoints: ${TRAEFIK_ENTRYPOINT}
         traefik.http.routers.swfs-volume.rule: Host(`${VOLUME_TRAEFIK_SUBDOMAIN}.${PUBLIC_HOSTNAME}`)
-        traefik.http.middlewares.swfs-volume-addprefix.addprefix.prefix: /ui/index.html
         traefik.http.middlewares.swfs-volume-auth.basicauth.users: ${VOLUME_TRAEFIK_AUTH}
-        traefik.http.routers.swfs-volume.middlewares: swfs-volume-addprefix, swfs-volume-auth
+        traefik.http.routers.swfs-volume.middlewares: swfs-volume-auth
         traefik.http.services.swfs-volume.loadbalancer.server.port: ${VOLUME_PORT}
         traefik.http.services.swfs-volume.loadbalancer.sticky.cookie: 'true'
 
@@ -152,15 +137,15 @@ services:
     deploy:
       mode: global
       restart_policy:
-        delay: ${FILER_RESTART_DELAY:-5s}
+        delay: ${FILER_RESTART_DELAY:-1s}
       update_config:
-        delay: ${FILER_UPDATE_DELAY:-1m}
+        delay: ${FILER_UPDATE_DELAY:-15s}
       resources:
         limits:
           cpus: '${FILER_RESOURCES_LIMITS_CPUS:-1}'
           memory: ${FILER_RESOURCES_LIMITS_MEMORY:-128M}
         reservations:
-          cpus: '${FILER_RESOURCES_RESERVATIONS_CPUS:-0.001}'
+          cpus: '${FILER_RESOURCES_RESERVATIONS_CPUS:-0.1}'
           memory: ${FILER_RESOURCES_RESERVATIONS_MEMORY:-64M}
       labels:
         traefik.enable: 'true'
@@ -183,22 +168,14 @@ networks:
     external: true
 
 volumes:
-  master-1-vol:
-    name: ${MASTER_1_VOL_NAME:-seaweedfs-master-vol-1}
-    driver: local
-
-  master-2-vol:
-    name: ${MASTER_2_VOL_NAME:-seaweedfs-master-vol-2}
-    driver: local
-
-  master-3-vol:
-    name: ${MASTER_3_VOL_NAME:-seaweedfs-master-vol-3}
+  master-vol:
+    name: ${MASTER_VOL_NAME}
     driver: local
 
   volume-vol:
-    name: ${VOLUME_VOL_NAME_PREFIX:-seaweedfs-volume-vol}-{{.Node.ID}}
+    name: ${VOLUME_VOL_NAME}
     driver: local
 
   filer-vol:
-    name: ${FILER_VOL_NAME_PREFIX:-seaweedfs-filer-vol}-{{.Node.ID}}
+    name: ${FILER_VOL_NAME}
     driver: local
