@@ -42,7 +42,7 @@ services:
         delay: ${MASTER_UPDATE_DELAY:-1m}
       placement:
         constraints:
-          - "node.labels.${MASTER_NODE_LABEL_NAME:-swfs-master}==${MASTER_NODE_LABEL_VALUE:-1}"
+          - "node.labels.${MASTER_NODE_LABEL_NAME}==${MASTER_NODE_LABEL_VALUE}"
         max_replicas_per_node: 1
       resources:
         limits:
@@ -144,6 +144,9 @@ services:
       FILER_IP:
       FILER_PREFERED_DATACENTER: ${DATACENTER}
       FILER_PREFERED_RACK: ${RACK}
+      WEED_LEVELDB2_ENABLED: 'false'
+      WEED_ETCD_ENABLED: 'true'
+      WEED_ETCD_SERVERS: http://${ETCD_HOST}-1:${ETCD_PEER_PORT},http://${ETCD_HOST}-2:${ETCD_PEER_PORT},http://${ETCD_HOST}-3:${ETCD_PEER_PORT}
     networks:
       seaweedfs-net:
       traefik-net:
@@ -177,6 +180,49 @@ services:
         traefik.http.services.swfs-filer.loadbalancer.server.port: ${FILER_PORT}
         traefik.http.services.swfs-filer.loadbalancer.sticky.cookie: 'true'
 
+  swfs-etcd:
+    image: ${ETCD_IMAGE_NAME:-quay.io/coreos/etcd}:${ETCD_IMAGE_TAG:-latest}
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        $$(echo "
+          /usr/local/bin/etcd
+            --data-dir=${ETCD_DATA_PATH}
+            --name $${ETCD_IP}
+            --initial-advertise-peer-urls http://$${ETCD_IP}:${ETCD_PEER_PORT}
+            --listen-peer-urls http://0.0.0.0:${ETCD_PEER_PORT}
+            --advertise-client-urls http://$${ETCD_IP}:${ETCD_CLIENT_PORT}
+            --listen-client-urls http://0.0.0.0:${ETCD_CLIENT_PORT}
+            --initial-cluster ${ETCD_HOST}-1=http://${ETCD_HOST}-1:${ETCD_PEER_PORT},${ETCD_HOST}-2=http://${ETCD_HOST}-2:${ETCD_PEER_PORT},${ETCD_HOST}-3=http://${ETCD_HOST}-3:${ETCD_PEER_PORT}
+            --initial-cluster-state ${ETCD_CLUSTER_STATE}
+            --initial-cluster-token ${ETCD_CLUSTER_TOKEN}
+        ")
+    volumes:
+      - etcd-vol:${ETCD_DATA_PATH}
+    networks:
+      seaweedfs-net:
+    environment:
+      ETCD_IP:
+    deploy:
+      mode: replicated
+      replicas: ${ETCD_REPLICAS:-3}
+      restart_policy:
+        delay: ${ETCD_RESTART_DELAY:-1s}
+      update_config:
+        delay: ${ETCD_UPDATE_DELAY:-10s}
+      placement:
+        constraints:
+          - "node.labels.${MASTER_NODE_LABEL_NAME}==${MASTER_NODE_LABEL_VALUE}"
+        max_replicas_per_node: 1
+      resources:
+        limits:
+          cpus: '${ETCD_RESOURCES_LIMITS_CPUS:-0.1}'
+          memory: ${ETCD_RESOURCES_LIMITS_MEMORY:-16M}
+        reservations:
+          cpus: '${ETCD_RESOURCES_RESERVATIONS_CPUS:-0.001}'
+          memory: ${ETCD_RESOURCES_RESERVATIONS_MEMORY:-8M}
+
 networks:
   seaweedfs-net:
     name: ${SEAWEEDFS_NET_NAME:-seaweedfs-net}
@@ -199,4 +245,8 @@ volumes:
 
   filer-vol:
     name: ${FILER_VOL_NAME}
+    driver: local
+
+  etcd-vol:
+    name: ${ETCD_VOL_NAME}
     driver: local
