@@ -24,6 +24,8 @@ services:
       MASTER_IP:
     networks:
       seaweedfs-net:
+        aliases:
+          - master
       traefik-net:
     volumes:
       - master-vol:${DATA_PATH}
@@ -86,6 +88,8 @@ services:
       VOLUME_RACK: ${RACK}
     networks:
       seaweedfs-net:
+        aliases:
+          - volume
       traefik-net:
     volumes:
       - volume-vol:${DATA_PATH}
@@ -146,6 +150,8 @@ services:
       FILER_PREFERED_RACK: ${RACK}
     networks:
       seaweedfs-net:
+        aliases:
+          - filer
       traefik-net:
     volumes:
       - filer-vol:${DATA_PATH}
