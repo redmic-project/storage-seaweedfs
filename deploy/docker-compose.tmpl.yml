@@ -146,7 +146,7 @@ services:
       FILER_PREFERED_RACK: ${RACK}
       WEED_LEVELDB2_ENABLED: 'false'
       WEED_ETCD_ENABLED: 'true'
-      WEED_ETCD_SERVERS: http://${ETCD_HOST}-1:${ETCD_PEER_PORT},http://${ETCD_HOST}-2:${ETCD_PEER_PORT},http://${ETCD_HOST}-3:${ETCD_PEER_PORT}
+      WEED_ETCD_SERVERS: http://${ETCD_HOST}-1:${ETCD_CLIENT_PORT},http://${ETCD_HOST}-2:${ETCD_CLIENT_PORT},http://${ETCD_HOST}-3:${ETCD_CLIENT_PORT}
     networks:
       seaweedfs-net:
       traefik-net:
