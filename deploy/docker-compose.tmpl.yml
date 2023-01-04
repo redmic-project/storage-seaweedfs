@@ -141,6 +141,7 @@ services:
             -ip=$${FILER_IP}
             -ip.bind=0.0.0.0
             -port=${FILER_PORT}
+            -port.grpc=${FILER_GRPC_PORT}
             -master=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
             -metricsPort=${METRICS_PORT}
         ")
@@ -158,6 +159,9 @@ services:
     ports:
       - target: ${FILER_PORT}
         published: ${PUBLIC_FILER_PORT}
+        mode: ${FILER_PORT_MODE}
+      - target: ${FILER_GRPC_PORT}
+        published: ${PUBLIC_FILER_GRPC_PORT}
         mode: ${FILER_PORT_MODE}
     volumes:
       - filer-vol:${DATA_PATH}
