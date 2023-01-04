@@ -75,18 +75,23 @@ services:
             -ip=$${VOLUME_IP}
             -ip.bind=0.0.0.0
             -port=${VOLUME_PORT}
-            -publicUrl=${VOLUME_TRAEFIK_SUBDOMAIN}.${PUBLIC_HOSTNAME}
+            -publicUrl=$${VOLUME_PUBLIC_HOST}:${PUBLIC_VOLUME_PORT}
             -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
             -metricsPort=${METRICS_PORT}
         ")
     hostname: ${VOLUME_IP}
     environment:
       VOLUME_IP:
+      VOLUME_PUBLIC_HOST:
       VOLUME_DATACENTER: ${DATACENTER}
       VOLUME_RACK: ${RACK}
     networks:
       seaweedfs-net:
       traefik-net:
+    ports:
+      - target: ${VOLUME_PORT}
+        published: ${PUBLIC_VOLUME_PORT}
+        mode: ${VOLUME_PORT_MODE}
     volumes:
       - volume-vol:${DATA_PATH}
     healthcheck:
@@ -150,6 +155,10 @@ services:
     networks:
       seaweedfs-net:
       traefik-net:
+    ports:
+      - target: ${FILER_PORT}
+        published: ${PUBLIC_FILER_PORT}
+        mode: ${FILER_PORT_MODE}
     volumes:
       - filer-vol:${DATA_PATH}
     healthcheck:
