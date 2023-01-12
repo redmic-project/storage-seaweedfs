@@ -11,7 +11,7 @@ services:
           weed -logtostderr=true master
             -mdir=${DATA_PATH}
             -volumePreallocate
-            -volumeSizeLimitMB=1024
+            -volumeSizeLimitMB=${MASTER_VOLUME_SIZE_LIMIT_MB}
             -defaultReplication=${DEFAULT_REPLICATION}
             -ip=$${MASTER_IP}
             -ip.bind=0.0.0.0
@@ -47,10 +47,10 @@ services:
       resources:
         limits:
           cpus: '${MASTER_RESOURCES_LIMITS_CPUS:-0.1}'
-          memory: ${MASTER_RESOURCES_LIMITS_MEMORY:-64M}
+          memory: ${MASTER_RESOURCES_LIMITS_MEMORY:-128M}
         reservations:
           cpus: '${MASTER_RESOURCES_RESERVATIONS_CPUS:-0.001}'
-          memory: ${MASTER_RESOURCES_RESERVATIONS_MEMORY:-32M}
+          memory: ${MASTER_RESOURCES_RESERVATIONS_MEMORY:-64M}
       labels:
         traefik.enable: 'true'
         traefik.http.routers.swfs-master.entrypoints: ${TRAEFIK_ENTRYPOINT}
@@ -69,9 +69,13 @@ services:
         $$(echo "
           weed -logtostderr=true volume
             -dir=${DATA_PATH}
-            -max=0
+            -max=${VOLUME_MAX}
             -dataCenter=$${VOLUME_DATACENTER}
             -rack=$${VOLUME_RACK}
+            -disk=${VOLUME_DISK}
+            -fileSizeLimitMB=${VOLUME_FILE_SIZE_LIMIT_MB}
+            -concurrentUploadLimitMB=${VOLUME_UPLOAD_LIMIT_MB}
+            -concurrentDownloadLimitMB=${VOLUME_DOWNLOAD_LIMIT_MB}
             -ip=$${VOLUME_IP}
             -ip.bind=0.0.0.0
             -port=${VOLUME_PORT}
@@ -113,11 +117,11 @@ services:
         max_replicas_per_node: 1
       resources:
         limits:
-          cpus: '${VOLUME_RESOURCES_LIMITS_CPUS:-1}'
-          memory: ${VOLUME_RESOURCES_LIMITS_MEMORY:-64M}
+          cpus: '${VOLUME_RESOURCES_LIMITS_CPUS:-2}'
+          memory: ${VOLUME_RESOURCES_LIMITS_MEMORY:-512M}
         reservations:
           cpus: '${VOLUME_RESOURCES_RESERVATIONS_CPUS:-0.1}'
-          memory: ${VOLUME_RESOURCES_RESERVATIONS_MEMORY:-32M}
+          memory: ${VOLUME_RESOURCES_RESERVATIONS_MEMORY:-320M}
       labels:
         traefik.enable: 'true'
         traefik.http.routers.swfs-volume.entrypoints: ${TRAEFIK_ENTRYPOINT}
@@ -137,7 +141,11 @@ services:
           weed -logtostderr=true filer
             -dataCenter=$${FILER_PREFERED_DATACENTER}
             -rack=$${FILER_PREFERED_RACK}
-            -filerGroup ${FILER_GROUP}
+            -filerGroup=${FILER_GROUP}
+            -collection=${FILER_COLLECTION}
+            -maxMB=${FILER_MAX_MB}
+            -concurrentUploadLimitMB=${FILER_UPLOAD_LIMIT_MB}
+            -downloadMaxMBps=${FILER_DOWNLOAD_LIMIT_MB}
             -ip=$${FILER_IP}
             -ip.bind=0.0.0.0
             -port=${FILER_PORT}
@@ -179,11 +187,11 @@ services:
         delay: ${FILER_UPDATE_DELAY:-15s}
       resources:
         limits:
-          cpus: '${FILER_RESOURCES_LIMITS_CPUS:-1}'
-          memory: ${FILER_RESOURCES_LIMITS_MEMORY:-256M}
+          cpus: '${FILER_RESOURCES_LIMITS_CPUS:-0.5}'
+          memory: ${FILER_RESOURCES_LIMITS_MEMORY:-128M}
         reservations:
-          cpus: '${FILER_RESOURCES_RESERVATIONS_CPUS:-0.1}'
-          memory: ${FILER_RESOURCES_RESERVATIONS_MEMORY:-128M}
+          cpus: '${FILER_RESOURCES_RESERVATIONS_CPUS:-0.05}'
+          memory: ${FILER_RESOURCES_RESERVATIONS_MEMORY:-64M}
       labels:
         traefik.enable: 'true'
         traefik.http.routers.swfs-filer.entrypoints: ${TRAEFIK_ENTRYPOINT}
