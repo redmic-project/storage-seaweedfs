@@ -240,10 +240,10 @@ services:
       resources:
         limits:
           cpus: '${ETCD_RESOURCES_LIMITS_CPUS:-1}'
-          memory: ${ETCD_RESOURCES_LIMITS_MEMORY:-128M}
+          memory: ${ETCD_RESOURCES_LIMITS_MEMORY:-256M}
         reservations:
           cpus: '${ETCD_RESOURCES_RESERVATIONS_CPUS:-0.05}'
-          memory: ${ETCD_RESOURCES_RESERVATIONS_MEMORY:-64M}
+          memory: ${ETCD_RESOURCES_RESERVATIONS_MEMORY:-128M}
 
 networks:
   seaweedfs-net:
