@@ -46,10 +46,10 @@ services:
         max_replicas_per_node: 1
       resources:
         limits:
-          cpus: '${MASTER_RESOURCES_LIMITS_CPUS:-0.1}'
+          cpus: '${MASTER_RESOURCES_LIMITS_CPUS:-0.5}'
           memory: ${MASTER_RESOURCES_LIMITS_MEMORY:-128M}
         reservations:
-          cpus: '${MASTER_RESOURCES_RESERVATIONS_CPUS:-0.001}'
+          cpus: '${MASTER_RESOURCES_RESERVATIONS_CPUS:-0.01}'
           memory: ${MASTER_RESOURCES_RESERVATIONS_MEMORY:-64M}
       labels:
         traefik.enable: 'true'
@@ -187,7 +187,7 @@ services:
         delay: ${FILER_UPDATE_DELAY:-15s}
       resources:
         limits:
-          cpus: '${FILER_RESOURCES_LIMITS_CPUS:-0.5}'
+          cpus: '${FILER_RESOURCES_LIMITS_CPUS:-1}'
           memory: ${FILER_RESOURCES_LIMITS_MEMORY:-128M}
         reservations:
           cpus: '${FILER_RESOURCES_RESERVATIONS_CPUS:-0.05}'
@@ -239,11 +239,11 @@ services:
         max_replicas_per_node: 1
       resources:
         limits:
-          cpus: '${ETCD_RESOURCES_LIMITS_CPUS:-0.1}'
-          memory: ${ETCD_RESOURCES_LIMITS_MEMORY:-32M}
+          cpus: '${ETCD_RESOURCES_LIMITS_CPUS:-1}'
+          memory: ${ETCD_RESOURCES_LIMITS_MEMORY:-256M}
         reservations:
-          cpus: '${ETCD_RESOURCES_RESERVATIONS_CPUS:-0.001}'
-          memory: ${ETCD_RESOURCES_RESERVATIONS_MEMORY:-16M}
+          cpus: '${ETCD_RESOURCES_RESERVATIONS_CPUS:-0.05}'
+          memory: ${ETCD_RESOURCES_RESERVATIONS_MEMORY:-128M}
 
 networks:
   seaweedfs-net:
