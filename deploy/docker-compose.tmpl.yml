@@ -11,8 +11,9 @@ services:
           weed -logtostderr=true master
             -mdir=${DATA_PATH}
             -volumePreallocate
-            -volumeSizeLimitMB=${MASTER_VOLUME_SIZE_LIMIT_MB}
-            -defaultReplication=${DEFAULT_REPLICATION}
+            -volumeSizeLimitMB=$${MASTER_VOLUME_SIZE_LIMIT_MB}
+            -defaultReplication=$${MASTER_DEFAULT_REPLICATION}
+            -garbageThreshold=$${MASTER_GARBAGE_THRESHOLD}
             -ip=$${MASTER_IP}
             -ip.bind=0.0.0.0
             -port=${MASTER_PORT}
@@ -22,6 +23,9 @@ services:
     hostname: ${MASTER_IP}
     environment:
       MASTER_IP:
+      MASTER_VOLUME_SIZE_LIMIT_MB:
+      MASTER_DEFAULT_REPLICATION:
+      MASTER_GARBAGE_THRESHOLD:
     networks:
       seaweedfs-net:
       traefik-net:
@@ -42,7 +46,7 @@ services:
         delay: ${MASTER_UPDATE_DELAY:-1m}
       placement:
         constraints:
-          - "node.labels.${MASTER_NODE_LABEL_NAME}==${MASTER_NODE_LABEL_VALUE}"
+          - "node.labels.${MASTER_NODE_LABEL_NAME:-swfs-master}==${MASTER_NODE_LABEL_VALUE:-1}"
         max_replicas_per_node: 1
       resources:
         limits:
@@ -52,7 +56,7 @@ services:
           cpus: '${MASTER_RESOURCES_RESERVATIONS_CPUS:-0.01}'
           memory: ${MASTER_RESOURCES_RESERVATIONS_MEMORY:-64M}
       labels:
-        traefik.enable: 'true'
+        traefik.enable: ${TRAEFIK_ENABLE}
         traefik.http.routers.swfs-master.entrypoints: ${TRAEFIK_ENTRYPOINT}
         traefik.http.routers.swfs-master.rule: Host(`${MASTER_TRAEFIK_SUBDOMAIN}.${PUBLIC_HOSTNAME}`)
         traefik.http.middlewares.swfs-master-auth.basicauth.users: ${MASTER_TRAEFIK_AUTH}
@@ -69,17 +73,20 @@ services:
         $$(echo "
           weed -logtostderr=true volume
             -dir=${DATA_PATH}
-            -max=${VOLUME_MAX}
+            -max=$${VOLUME_MAX}
             -dataCenter=$${VOLUME_DATACENTER}
             -rack=$${VOLUME_RACK}
-            -disk=${VOLUME_DISK}
-            -fileSizeLimitMB=${VOLUME_FILE_SIZE_LIMIT_MB}
-            -concurrentUploadLimitMB=${VOLUME_UPLOAD_LIMIT_MB}
-            -concurrentDownloadLimitMB=${VOLUME_DOWNLOAD_LIMIT_MB}
+            -disk=$${VOLUME_DISK}
+            -fileSizeLimitMB=$${VOLUME_FILE_SIZE_LIMIT_MB}
+            -concurrentUploadLimitMB=$${VOLUME_UPLOAD_LIMIT_MB}
+            -concurrentDownloadLimitMB=$${VOLUME_DOWNLOAD_LIMIT_MB}
             -ip=$${VOLUME_IP}
             -ip.bind=0.0.0.0
             -port=${VOLUME_PORT}
             -publicUrl=$${VOLUME_PUBLIC_HOST}:${PUBLIC_VOLUME_PORT}
+            -readMode=$${VOLUME_READ_MODE}
+            -readBufferSizeMB=$${VOLUME_READ_BUFFER_SIZE}
+            -hasSlowRead=$${VOLUME_HAS_SLOW_READ}
             -mserver=${MASTER_HOST}-1:${MASTER_PORT},${MASTER_HOST}-2:${MASTER_PORT},${MASTER_HOST}-3:${MASTER_PORT}
             -metricsPort=${METRICS_PORT}
         ")
@@ -87,8 +94,16 @@ services:
     environment:
       VOLUME_IP:
       VOLUME_PUBLIC_HOST:
+      VOLUME_MAX:
       VOLUME_DATACENTER: ${DATACENTER}
       VOLUME_RACK: ${RACK}
+      VOLUME_DISK:
+      VOLUME_FILE_SIZE_LIMIT_MB:
+      VOLUME_UPLOAD_LIMIT_MB:
+      VOLUME_DOWNLOAD_LIMIT_MB:
+      VOLUME_READ_MODE:
+      VOLUME_READ_BUFFER_SIZE:
+      VOLUME_HAS_SLOW_READ:
     networks:
       seaweedfs-net:
       traefik-net:
@@ -123,7 +138,7 @@ services:
           cpus: '${VOLUME_RESOURCES_RESERVATIONS_CPUS:-0.1}'
           memory: ${VOLUME_RESOURCES_RESERVATIONS_MEMORY:-320M}
       labels:
-        traefik.enable: 'true'
+        traefik.enable: ${TRAEFIK_ENABLE}
         traefik.http.routers.swfs-volume.entrypoints: ${TRAEFIK_ENTRYPOINT}
         traefik.http.routers.swfs-volume.rule: Host(`${VOLUME_TRAEFIK_SUBDOMAIN}.${PUBLIC_HOSTNAME}`)
         traefik.http.middlewares.swfs-volume-auth.basicauth.users: ${VOLUME_TRAEFIK_AUTH}
@@ -141,11 +156,11 @@ services:
           weed -logtostderr=true filer
             -dataCenter=$${FILER_PREFERED_DATACENTER}
             -rack=$${FILER_PREFERED_RACK}
-            -filerGroup=${FILER_GROUP}
-            -collection=${FILER_COLLECTION}
-            -maxMB=${FILER_MAX_MB}
-            -concurrentUploadLimitMB=${FILER_UPLOAD_LIMIT_MB}
-            -downloadMaxMBps=${FILER_DOWNLOAD_LIMIT_MB}
+            -filerGroup=$${FILER_GROUP}
+            -collection=$${FILER_COLLECTION}
+            -maxMB=$${FILER_MAX_MB}
+            -concurrentUploadLimitMB=$${FILER_UPLOAD_LIMIT_MB}
+            -downloadMaxMBps=$${FILER_DOWNLOAD_LIMIT_MB}
             -ip=$${FILER_IP}
             -ip.bind=0.0.0.0
             -port=${FILER_PORT}
@@ -158,9 +173,14 @@ services:
       FILER_IP:
       FILER_PREFERED_DATACENTER: ${DATACENTER}
       FILER_PREFERED_RACK: ${RACK}
+      FILER_GROUP:
+      FILER_COLLECTION:
+      FILER_MAX_MB:
+      FILER_UPLOAD_LIMIT_MB:
+      FILER_DOWNLOAD_LIMIT_MB:
       WEED_LEVELDB2_ENABLED: 'false'
-      WEED_ETCD_ENABLED: 'true'
-      WEED_ETCD_SERVERS: http://${ETCD_HOST}-1:${ETCD_CLIENT_PORT},http://${ETCD_HOST}-2:${ETCD_CLIENT_PORT},http://${ETCD_HOST}-3:${ETCD_CLIENT_PORT}
+      WEED_LEVELDB3_ENABLED: 'true'
+      WEED_LEVELDB3_DIR: ${DATA_PATH}/filerldb3
     networks:
       seaweedfs-net:
       traefik-net:
@@ -187,63 +207,19 @@ services:
         delay: ${FILER_UPDATE_DELAY:-15s}
       resources:
         limits:
-          cpus: '${FILER_RESOURCES_LIMITS_CPUS:-1}'
-          memory: ${FILER_RESOURCES_LIMITS_MEMORY:-128M}
+          cpus: '${FILER_RESOURCES_LIMITS_CPUS:-2}'
+          memory: ${FILER_RESOURCES_LIMITS_MEMORY:-256M}
         reservations:
-          cpus: '${FILER_RESOURCES_RESERVATIONS_CPUS:-0.05}'
-          memory: ${FILER_RESOURCES_RESERVATIONS_MEMORY:-64M}
+          cpus: '${FILER_RESOURCES_RESERVATIONS_CPUS:-0.1}'
+          memory: ${FILER_RESOURCES_RESERVATIONS_MEMORY:-128M}
       labels:
-        traefik.enable: 'true'
+        traefik.enable: ${TRAEFIK_ENABLE}
         traefik.http.routers.swfs-filer.entrypoints: ${TRAEFIK_ENTRYPOINT}
         traefik.http.routers.swfs-filer.rule: Host(`${FILER_TRAEFIK_SUBDOMAIN}.${PUBLIC_HOSTNAME}`)
         traefik.http.middlewares.swfs-filer-auth.basicauth.users: ${FILER_TRAEFIK_AUTH}
         traefik.http.routers.swfs-filer.middlewares: swfs-filer-auth
         traefik.http.services.swfs-filer.loadbalancer.server.port: ${FILER_PORT}
         traefik.http.services.swfs-filer.loadbalancer.sticky.cookie: 'true'
-
-  swfs-etcd:
-    image: ${ETCD_IMAGE_NAME:-quay.io/coreos/etcd}:${ETCD_IMAGE_TAG:-latest}
-    entrypoint: /bin/sh
-    command:
-      - -c
-      - |
-        $$(echo "
-          /usr/local/bin/etcd
-            --data-dir=${ETCD_DATA_PATH}
-            --name $${ETCD_IP}
-            --initial-advertise-peer-urls http://$${ETCD_IP}:${ETCD_PEER_PORT}
-            --listen-peer-urls http://0.0.0.0:${ETCD_PEER_PORT}
-            --advertise-client-urls http://$${ETCD_IP}:${ETCD_CLIENT_PORT}
-            --listen-client-urls http://0.0.0.0:${ETCD_CLIENT_PORT}
-            --initial-cluster ${ETCD_HOST}-1=http://${ETCD_HOST}-1:${ETCD_PEER_PORT},${ETCD_HOST}-2=http://${ETCD_HOST}-2:${ETCD_PEER_PORT},${ETCD_HOST}-3=http://${ETCD_HOST}-3:${ETCD_PEER_PORT}
-            --initial-cluster-state ${ETCD_CLUSTER_STATE}
-            --initial-cluster-token ${ETCD_CLUSTER_TOKEN}
-        ")
-    hostname: ${ETCD_IP}
-    environment:
-      ETCD_IP:
-    networks:
-      seaweedfs-net:
-    volumes:
-      - etcd-vol:${ETCD_DATA_PATH}
-    deploy:
-      mode: replicated
-      replicas: ${ETCD_REPLICAS:-3}
-      restart_policy:
-        delay: ${ETCD_RESTART_DELAY:-1s}
-      update_config:
-        delay: ${ETCD_UPDATE_DELAY:-10s}
-      placement:
-        constraints:
-          - "node.labels.${MASTER_NODE_LABEL_NAME}==${MASTER_NODE_LABEL_VALUE}"
-        max_replicas_per_node: 1
-      resources:
-        limits:
-          cpus: '${ETCD_RESOURCES_LIMITS_CPUS:-1}'
-          memory: ${ETCD_RESOURCES_LIMITS_MEMORY:-256M}
-        reservations:
-          cpus: '${ETCD_RESOURCES_RESERVATIONS_CPUS:-0.05}'
-          memory: ${ETCD_RESOURCES_RESERVATIONS_MEMORY:-128M}
 
 networks:
   seaweedfs-net:
@@ -267,8 +243,4 @@ volumes:
 
   filer-vol:
     name: ${FILER_VOL_NAME}
-    driver: local
-
-  etcd-vol:
-    name: ${ETCD_VOL_NAME}
     driver: local
