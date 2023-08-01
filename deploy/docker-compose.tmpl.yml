@@ -32,7 +32,7 @@ services:
     volumes:
       - master-vol:${DATA_PATH}
     healthcheck:
-      test: wget --spider -q http://127.0.0.1:${MASTER_PORT}/cluster/healthz
+      test: wget -q -O - http://127.0.0.1:${MASTER_PORT}/cluster/status
       interval: ${HEALTHCHECK_INTERVAL}
       timeout: ${HEALTHCHECK_TIMEOUT}
       retries: ${HEALTHCHECK_RETRIES}
